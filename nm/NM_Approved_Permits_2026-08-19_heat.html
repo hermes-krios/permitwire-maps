@@ -180,17 +180,19 @@ map.on('baselayerchange', function (e) {
   applyHeatZoom();
 });
 
+(function initView() {
+  const b = clusterBounds(ptsOf('30'));
+  if (b) map.fitBounds(b, { maxZoom: 13 });
+  else map.setView([32.5, -104.0], 8);
+})();
+applyHeatZoom();
+refreshCities();
 map.whenReady(function () {
-  map.once('moveend', function () {
-    applyHeatZoom();
-    refreshCities();
-    setTimeout(function () { window.__pwReady = true; }, 900);
-  });
-  fitCluster();
   applyHeatZoom();
   refreshCities();
-  setTimeout(function () { window.__pwReady = true; }, 5000);
+  setTimeout(function () { window.__pwReady = true; }, 1200);
 });
+setTimeout(function () { window.__pwReady = true; }, 6000);
 </script>
 </body>
 </html>
