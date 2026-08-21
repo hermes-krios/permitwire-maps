@@ -40,7 +40,7 @@
 </style>
 </head>
 <body>
-<div id="banner"><strong>NM C-101</strong> — 30d 534 wells (464 fed / 70 fee) · 90d 1152 · 180d 1865 · 2026-02-22 → 2026-08-20 · hex cells = count · check Well dots for pads · unlocated remain in DB (none centroided)</div>
+<div id="banner"><strong>NM C-101</strong> — 30d 534 wells (464 fed / 70 fee) · 90d 1152 · 180d 1865 · 2026-02-22 → 2026-08-20 · hex = count, dots = wells (amber federal / blue fee) · unlocated remain in DB (none centroided)</div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -140,7 +140,8 @@ function buildHex(key, s) {
     const parts = id.split(':');
     const q = +parts[0], r = +parts[1];
     layers.push(L.polygon(hexCorners(q, r, s), {
-      color: '#1c1917', weight: 0.7, fillColor: hexColor(n), fillOpacity: 0.75
+      color: '#fff7ed', weight: 1, fillColor: hexColor(n), fillOpacity: 0.55,
+      interactive: true
     }).bindTooltip(n + ' C-101' + (n === 1 ? '' : 's')));
   });
   return layers;
@@ -160,7 +161,7 @@ L.geoJSON(COUNTIES, {
 }).addTo(map);
 
 const hexLayer = L.layerGroup().addTo(map);
-const wellLayer = L.layerGroup();
+const wellLayer = L.layerGroup().addTo(map);
 const cityLayer = L.layerGroup().addTo(map);
 let activeKey = '30';
 
@@ -171,11 +172,13 @@ function syncView() {
     const z = map.getZoom();
     const s = hexSize(Number.isFinite(z) ? z : 8);
     buildHex(activeKey, s).forEach(function(ly) { ly.addTo(hexLayer); });
+    const r = z >= 12 ? 6 : z >= 10 ? 5 : 4;
     ptsOf(activeKey).forEach(function(p) {
       if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) return;
       L.circleMarker([p.latitude, p.longitude], {
-        radius: 5, color: '#1c1917', weight: 1,
-        fillColor: p.federal ? FED : FEE, fillOpacity: 0.95
+        radius: r, color: '#1c1917', weight: 1.2,
+        fillColor: p.federal ? FED : FEE, fillOpacity: 0.95,
+        pane: 'markerPane'
       }).bindPopup(popupHtml(p)).addTo(wellLayer);
     });
   } catch (err) {
@@ -242,7 +245,7 @@ const Legend = L.Control.extend({
       '<div class=t style="margin-top:8px">Wells (optional overlay)</div>' +
       '<div class=row><span class=dot style="background:#f59e0b"></span>Federal / Indian</div>' +
       '<div class=row><span class=dot style="background:#38bdf8"></span>State / Private</div>' +
-      '<div style="margin-top:6px;opacity:.8">Check “Well dots” for individual wells.</div>';
+      '<div style="margin-top:6px;opacity:.8">Hex = count; dots = wells (both on).</div>';
     return d;
   }
 });
