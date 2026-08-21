@@ -96,6 +96,7 @@ function popupHtml(p) {
     + '<div>' + p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) + '</div></div>';
 }
 function hexSize(z) {
+  if (!Number.isFinite(z)) return 0.045;
   if (z <= 6) return 0.08;
   if (z <= 8) return 0.045;
   return 0.025;
@@ -162,19 +163,25 @@ const cityLayer = L.layerGroup().addTo(map);
 let activeKey = '30';
 
 function syncView() {
-  hexLayer.clearLayers();
-  wellLayer.clearLayers();
-  const z = map.getZoom();
-  const pts = ptsOf(activeKey);
-  if (z < PIN_ZOOM) {
-    buildHex(activeKey, hexSize(z)).forEach(function(ly) { ly.addTo(hexLayer); });
-  } else {
-    pts.forEach(function(p) {
-      L.circleMarker([p.latitude, p.longitude], {
-        radius: 5, color: '#1c1917', weight: 1,
-        fillColor: p.federal ? FED : FEE, fillOpacity: 0.95
-      }).bindPopup(popupHtml(p)).addTo(wellLayer);
-    });
+  try {
+    hexLayer.clearLayers();
+    wellLayer.clearLayers();
+    const z = map.getZoom();
+    if (!Number.isFinite(z)) return;
+    const pts = ptsOf(activeKey);
+    if (z < PIN_ZOOM) {
+      buildHex(activeKey, hexSize(z)).forEach(function(ly) { ly.addTo(hexLayer); });
+    } else {
+      pts.forEach(function(p) {
+        if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) return;
+        L.circleMarker([p.latitude, p.longitude], {
+          radius: 5, color: '#1c1917', weight: 1,
+          fillColor: p.federal ? FED : FEE, fillOpacity: 0.95
+        }).bindPopup(popupHtml(p)).addTo(wellLayer);
+      });
+    }
+  } catch (err) {
+    console.error(err);
   }
 }
 function refreshCities() {
@@ -254,17 +261,13 @@ map.on('baselayerchange', function (e) {
   if (b) map.fitBounds(b, { maxZoom: 12 });
 });
 
-(function initView() {
-  const b = clusterBounds(ptsOf('30'));
-  if (b) map.fitBounds(b, { maxZoom: 12 });
-  else map.setView([32.5, -104.0], 8);
-})();
-syncView();
-refreshCities();
+map.setView([32.5, -104.0], 8);
 map.whenReady(function () {
+  const b = clusterBounds(ptsOf('30'));
+  if (b && b.isValid()) map.fitBounds(b, { maxZoom: 12 });
   syncView();
   refreshCities();
-  setTimeout(function () { window.__pwReady = true; }, 1500);
+  setTimeout(function () { window.__pwReady = true; }, 2000);
 });
 setTimeout(function () { window.__pwReady = true; }, 8000);
 </script>
