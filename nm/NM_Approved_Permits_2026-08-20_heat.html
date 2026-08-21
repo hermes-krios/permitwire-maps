@@ -111,12 +111,14 @@ function axialRound(q, r) {
   return [rx, rz];
 }
 function lonLatToHex(lon, lat, s) {
-  const q = (Math.SQRT3 / 3 * lon - lat / 3) / s;
+  const rt3 = Math.sqrt(3);
+  const q = (rt3 / 3 * lon - lat / 3) / s;
   const r = (2 / 3 * lat) / s;
   return axialRound(q, r);
 }
 function hexCorners(q, r, s) {
-  const cx = s * (Math.SQRT3 * q + Math.SQRT3 / 2 * r);
+  const rt3 = Math.sqrt(3);
+  const cx = s * (rt3 * q + rt3 / 2 * r);
   const cy = s * (1.5 * r);
   const out = [];
   for (let i = 0; i < 6; i++) {
