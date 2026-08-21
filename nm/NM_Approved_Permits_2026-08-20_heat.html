@@ -50,10 +50,20 @@ const CITIES = [{"name":"Carlsbad","latitude":32.4207,"longitude":-104.2288},{"n
 const PIN_ZOOM = 11;
 const FED = '#f59e0b';
 const FEE = '#38bdf8';
-const HEX_FILL = {1:'#38bdf8', 2:'#fbbf24', 5:'#f97316', 10:'#ef4444', 20:'#7f1d1d'};
+const HEX_FILL = {
+  1: '#38bdf8',
+  2: '#fde047',
+  5: '#fb923c',
+  10: '#f97316',
+  20: '#ef4444',
+  30: '#b91c1c',
+  40: '#450a0a'
+};
 window.__pwReady = false;
 
 function hexColor(n) {
+  if (n >= 40) return HEX_FILL[40];
+  if (n >= 30) return HEX_FILL[30];
   if (n >= 20) return HEX_FILL[20];
   if (n >= 10) return HEX_FILL[10];
   if (n >= 5) return HEX_FILL[5];
@@ -238,10 +248,12 @@ const Legend = L.Control.extend({
     d.innerHTML =
       '<div class=t>C-101 approvals</div>' +
       '<div class=row><span class=sw style="background:#38bdf8"></span>1 / hex</div>' +
-      '<div class=row><span class=sw style="background:#fbbf24"></span>2–4</div>' +
-      '<div class=row><span class=sw style="background:#f97316"></span>5–9</div>' +
-      '<div class=row><span class=sw style="background:#ef4444"></span>10–19</div>' +
-      '<div class=row><span class=sw style="background:#7f1d1d"></span>20+</div>' +
+      '<div class=row><span class=sw style="background:#fde047"></span>2–4</div>' +
+      '<div class=row><span class=sw style="background:#fb923c"></span>5–9</div>' +
+      '<div class=row><span class=sw style="background:#f97316"></span>10–19</div>' +
+      '<div class=row><span class=sw style="background:#ef4444"></span>20–29</div>' +
+      '<div class=row><span class=sw style="background:#b91c1c"></span>30–39</div>' +
+      '<div class=row><span class=sw style="background:#450a0a"></span>40+</div>' +
       '<div class=t style="margin-top:8px">Wells (optional overlay)</div>' +
       '<div class=row><span class=dot style="background:#f59e0b"></span>Federal / Indian</div>' +
       '<div class=row><span class=dot style="background:#38bdf8"></span>State / Private</div>' +
