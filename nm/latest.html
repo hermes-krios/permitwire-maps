@@ -40,7 +40,7 @@
 </style>
 </head>
 <body>
-<div id="banner"><strong>NM C-101</strong> — 30d 534 wells (464 fed / 70 fee) · 90d 1152 · 180d 1865 · 2026-02-22 → 2026-08-20 · hexes until zoom 11, then well dots · unlocated remain in DB (none centroided)</div>
+<div id="banner"><strong>NM C-101</strong> — 30d 534 wells (464 fed / 70 fee) · 90d 1152 · 180d 1865 · 2026-02-22 → 2026-08-20 · hex cells = count · check Well dots for pads · unlocated remain in DB (none centroided)</div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -158,7 +158,7 @@ L.geoJSON(COUNTIES, {
 }).addTo(map);
 
 const hexLayer = L.layerGroup().addTo(map);
-const wellLayer = L.layerGroup().addTo(map);
+const wellLayer = L.layerGroup();
 const cityLayer = L.layerGroup().addTo(map);
 let activeKey = '30';
 
@@ -167,19 +167,15 @@ function syncView() {
     hexLayer.clearLayers();
     wellLayer.clearLayers();
     const z = map.getZoom();
-    if (!Number.isFinite(z)) return;
-    const pts = ptsOf(activeKey);
-    if (z < PIN_ZOOM) {
-      buildHex(activeKey, hexSize(z)).forEach(function(ly) { ly.addTo(hexLayer); });
-    } else {
-      pts.forEach(function(p) {
-        if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) return;
-        L.circleMarker([p.latitude, p.longitude], {
-          radius: 5, color: '#1c1917', weight: 1,
-          fillColor: p.federal ? FED : FEE, fillOpacity: 0.95
-        }).bindPopup(popupHtml(p)).addTo(wellLayer);
-      });
-    }
+    const s = hexSize(Number.isFinite(z) ? z : 8);
+    buildHex(activeKey, s).forEach(function(ly) { ly.addTo(hexLayer); });
+    ptsOf(activeKey).forEach(function(p) {
+      if (!Number.isFinite(p.latitude) || !Number.isFinite(p.longitude)) return;
+      L.circleMarker([p.latitude, p.longitude], {
+        radius: 5, color: '#1c1917', weight: 1,
+        fillColor: p.federal ? FED : FEE, fillOpacity: 0.95
+      }).bindPopup(popupHtml(p)).addTo(wellLayer);
+    });
   } catch (err) {
     console.error(err);
   }
@@ -211,7 +207,7 @@ const dummy180 = L.layerGroup();
 dummy30.addTo(map);
 L.control.layers(
   { '30-day': dummy30, '90-day': dummy90, '180-day': dummy180 },
-  { 'Street labels': streets },
+  { 'Street labels': streets, 'Well dots': wellLayer },
   { collapsed: false }
 ).addTo(map);
 
@@ -241,10 +237,10 @@ const Legend = L.Control.extend({
       '<div class=row><span class=sw style="background:#f97316"></span>5–9</div>' +
       '<div class=row><span class=sw style="background:#ef4444"></span>10–19</div>' +
       '<div class=row><span class=sw style="background:#7f1d1d"></span>20+</div>' +
-      '<div class=t style="margin-top:8px">Wells (zoom ≥11)</div>' +
+      '<div class=t style="margin-top:8px">Wells (optional overlay)</div>' +
       '<div class=row><span class=dot style="background:#f59e0b"></span>Federal / Indian</div>' +
       '<div class=row><span class=dot style="background:#38bdf8"></span>State / Private</div>' +
-      '<div style="margin-top:6px;opacity:.8">Hexes hide when wells appear.</div>';
+      '<div style="margin-top:6px;opacity:.8">Check “Well dots” for individual wells.</div>';
     return d;
   }
 });
