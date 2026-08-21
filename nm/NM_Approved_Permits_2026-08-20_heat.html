@@ -97,9 +97,9 @@ function popupHtml(p) {
 }
 function hexSize(z) {
   if (!Number.isFinite(z)) return 0.045;
-  if (z <= 6) return 0.08;
-  if (z <= 8) return 0.045;
-  return 0.025;
+  if (z <= 6) return 0.12;
+  if (z <= 8) return 0.07;
+  return 0.04;
 }
 function axialRound(q, r) {
   let x = q, z = r, y = -x - z;
@@ -197,7 +197,7 @@ function refreshCities() {
 }
 function fitCluster() {
   const b = clusterBounds(ptsOf(activeKey));
-  if (b) map.fitBounds(b, { maxZoom: 12 });
+  if (b) map.fitBounds(b, { maxZoom: 10 });
   else map.setView([32.5, -104.0], 8);
 }
 function fitAll() {
@@ -258,13 +258,13 @@ map.on('baselayerchange', function (e) {
   else activeKey = '180';
   syncView();
   const b = clusterBounds(ptsOf(activeKey));
-  if (b) map.fitBounds(b, { maxZoom: 12 });
+  if (b) map.fitBounds(b, { maxZoom: 10 });
 });
 
 map.setView([32.5, -104.0], 8);
 map.whenReady(function () {
   const b = clusterBounds(ptsOf('30'));
-  if (b && b.isValid()) map.fitBounds(b, { maxZoom: 12 });
+  if (b && b.isValid()) map.fitBounds(b, { maxZoom: 10 });
   syncView();
   refreshCities();
   setTimeout(function () { window.__pwReady = true; }, 2000);
