@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Permian Permit Activity · Permit Wire</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html, body { margin: 0; height: 100%; background: #1c1917; font-family: -apple-system, Helvetica, Arial, sans-serif; }
+  #banner {
+    position: absolute; z-index: 500; left: 58px; top: 12px; right: 168px;
+    background: rgba(28,25,23,.9); color: #fff7ed; padding: 10px 14px;
+    border-radius: 8px; font-size: 13px; line-height: 1.35;
+    box-shadow: 0 2px 10px rgba(0,0,0,.35);
+  }
+  #banner strong { color: #fdba74; }
+  #map { height: 100%; }
+  .leaflet-control-layers { font-size: 13px; }
+  .fit-ctl a {
+    display: block; width: auto; padding: 0 8px; line-height: 26px;
+    font-size: 12px; color: #1c1917; text-decoration: none; white-space: nowrap;
+  }
+  .city-label {
+    background: none; border: 0; box-shadow: none; font-weight: 700;
+    color: #fff7ed; font-size: 11px;
+    text-shadow: 0 0 4px #000, 0 1px 2px #000;
+    white-space: nowrap;
+  }
+  .leaflet-popup-content { font-size: 13px; line-height: 1.35; min-width: 180px; }
+  .leaflet-popup-content .op { color: #78716c; font-size: 12px; }
+  .legend {
+    background: rgba(28,25,23,.92); color: #fff7ed; padding: 10px 12px;
+    border-radius: 8px; font-size: 12px; line-height: 1.45;
+    box-shadow: 0 2px 10px rgba(0,0,0,.35); min-width: 140px;
+  }
+  .legend .t { font-weight: 700; color: #fdba74; margin-bottom: 6px; }
+  .legend .row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .sw { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #1c1917; flex: 0 0 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #1c1917; flex: 0 0 10px; }
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  body { display: flex; flex-direction: column; color: #fff7ed; overflow: hidden; }
+  #header { flex: 0 0 auto; z-index: 700; background: #1c1917; padding: 10px 14px; box-shadow: 0 2px 10px #0008; }
+  #banner { position: static; padding: 0; box-shadow: none; background: none; font-size: 13px; }
+  #toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 13px; }
+  button, select, input { font: inherit; min-height: 36px; border: 1px solid #a8a29e; border-radius: 4px; padding: 6px 8px; }
+  button { cursor: pointer; background: #fff7ed; color: #292524; }
+  button:disabled { cursor: default; opacity: .5; }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid #fb923c; outline-offset: 2px; }
+  #county-select { max-width: min(310px,100%); }
+  .coverage-note { color: #fed7aa; font-size: 12px; }
+  #map { flex: 1 1 auto; height: auto; min-height: 0; width: 100%; }
+  #county-panel { position: absolute; z-index: 650; top: var(--header-height,130px); bottom: 12px; left: 84px; width: min(420px,calc(100vw - 96px)); padding: 14px; background: #292524f5; border: 1px solid #78716c; border-radius: 8px; overflow-y: auto; overscroll-behavior: contain; }
+  .panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+  h2 { font-size: 18px; margin: 4px 0; overflow-wrap: anywhere; }
+  #county-summary { font-weight: 600; font-size: 13px; }
+  #geography-note { color: #fed7aa; font-size: 12px; }
+  .record-controls { display: grid; gap: 6px; font-size: 13px; }
+  .record-controls input, .record-controls select { width: 100%; min-width: 0; }
+  .pagination { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 12px 0; font-size: 12px; }
+  #record-list { padding-left: 24px; margin: 0; }
+  #record-list li { border-top: 1px solid #57534e; padding: 10px 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+  #record-list a { color: #7dd3fc; }
+  .record-meta { color: #d6d3d1; font-size: 12px; }
+  #legends { position: absolute; z-index: 550; bottom: 28px; right: 12px; width: 265px; max-height: 45vh; overflow-y: auto; background: #1c1917ed; border-radius: 8px; padding: 10px; font-size: 11px; box-shadow: 0 2px 10px #0008; }
+  #legends summary { cursor: pointer; font-size: 13px; min-height: 26px; color: #fdba74; }
+  #legends section { margin: 6px 0; line-height: 1.5; }
+  #legends strong { color: #fdba74; }
+  #legends p { margin: 6px 0 0; }
+  .scale { display: flex; flex-wrap: wrap; gap: 3px 8px; margin: 5px 0; }
+  .scale span { display: inline-flex; align-items: center; gap: 3px; }
+  .sw { display: inline-block; width: 12px; height: 12px; flex: 0 0 12px; }
+  .dot { display: inline-block; margin-left: 4px; vertical-align: middle; }
+  .horizontal { background: #f59e0b; }
+  .vertical { background: #38bdf8; }
+  .fit-ctl button { display: block; width: 100%; border: 0; border-radius: 0; min-height: 36px; font-size: 12px; }
+  .fit-ctl button + button { border-top: 1px solid #ccc; }
+  .leaflet-control-layers { color: #1c1917; }
+  .leaflet-control-layers label { min-height: 28px; display: block; }
+  .leaflet-control-layers input { min-height: auto; }
+  @media (max-width: 600px) {
+    #header { padding: 8px; }
+    #toolbar { display: grid; grid-template-columns: auto 1fr; gap: 5px; }
+    #county-select { min-width: 0; max-width: none; width: 100%; }
+    #toolbar .coverage-note { grid-column: 1 / -1; }
+    #toolbar button { width: 100%; }
+    #banner { font-size: 11px; }
+    #toolbar button, #toolbar select { min-height: 40px; }
+    #county-panel { top: auto; bottom: 0; left: 0; width: 100%; max-height: 56dvh; border-radius: 10px 10px 0 0; padding: 12px; }
+    #legends { bottom: 24px; right: 6px; width: 205px; max-height: 28dvh; padding: 7px; }
+    body.panel-open #legends { display: none; }
+    .leaflet-control-layers { max-width: 190px; font-size: 11px; }
+    .leaflet-control-layers label { min-height: 26px; }
+    .coverage-note { font-size: 11px; }
+  }
+  #gap { color:#fed7aa; font-size:12px; }
+  .basin-label { color:#fff7ed; font-weight:800; letter-spacing:.03em; }
+  @media (max-width:600px) {
+    #state-select { width:100%; }
+    #legends:not([open]) { width:auto; }
+    .fit-ctl button { padding:4px 6px; }
+  }
+</style>
+<meta name="permitwire-map" content="permian-tx-style-v1">
+</head>
+<body>
+<header id="header">
+  <div id="banner" role="status" aria-live="polite"><strong>Permian · TX RRC + NM OCD</strong> — Loading both dated snapshots…</div>
+  <div id="gap" hidden>NM coverage is incomplete Sep 22–Oct 31, 2026; missing records do not mean zero activity.</div>
+  <div id="toolbar">
+    <label for="state-select">State</label>
+    <select id="state-select"><option value="both">Both states</option><option value="tx">Texas</option><option value="nm">New Mexico</option></select>
+    <label for="county-select">County</label>
+    <select id="county-select"><option value="">Choose a county…</option></select>
+    <button id="panel-toggle" type="button" aria-controls="county-panel" aria-expanded="false">Open details</button>
+    <button id="unassigned-control" type="button" hidden>Unassigned geography</button>
+    <span class="coverage-note">County shading: TX all records · NM reported surface only. Whole counties; not additive to dots.</span>
+  </div>
+</header>
+<main id="map" aria-label="Combined Permian permit approvals and reported surface locations"></main>
+<aside id="county-panel" aria-labelledby="county-title" hidden>
+  <div class="panel-heading"><h2 id="county-title" tabindex="-1">County details</h2><button id="panel-close" type="button" aria-label="Close county details">Close</button></div>
+  <p id="county-summary" role="status" aria-live="polite">Choose a county to view its records.</p>
+  <p id="geography-note">County geography is not a well location. No centroid pins are used.</p>
+  <div class="record-controls">
+    <label for="record-search">Search operator, permit, well or date</label>
+    <input id="record-search" type="search" placeholder="Search records" autocomplete="off"/>
+    <label for="record-filter">Records</label>
+    <select id="record-filter"><option value="all">All records</option><option value="missing">Missing surface location</option></select>
+  </div>
+  <nav class="pagination" aria-label="Record pages">
+    <button id="page-prev" type="button">Previous</button>
+    <span id="page-status" role="status" aria-live="polite"></span>
+    <button id="page-next" type="button">Next</button>
+  </nav>
+  <ol id="record-list" aria-label="Permit records"></ol>
+</aside>
+<details id="legends" open><summary>Map legends</summary>
+  <section id="county-legend" aria-label="County all-record count legend"><strong>County counts: TX all · NM reported surface</strong><div class="scale"></div><div>0 = outline only. Whole-county counts may include records outside the basin.</div></section>
+  <section id="surface-legend" aria-label="Reported surface dot legend"><strong>Reported surface dots · located only</strong><div><span class="dot horizontal"></span>TX horizontal / NM federal or Indian <span class="dot vertical"></span>TX other / NM state or private</div></section>
+  <section id="hex-legend" aria-label="Located-only hex count legend" hidden><strong>Located-only hex counts</strong><div class="scale"></div><div>Counts per zoom-dependent cell, not county totals.</div></section>
+  <p>County and location layers overlap; counts are not additive. Source: TX RRC and NM OCD C-101 (no separate BLM APDs). Basin: EIA.</p>
+</details>
+<noscript>This map requires JavaScript. County-only permits have no precise mapped location.</noscript>
+<script id="county-helpers">
+(function(root) {
+  'use strict';
+  function bucketOf(windowData, code, name) {
+    const counties = (windowData && windowData.counties) || {};
+    if (code === 'unassigned') return (windowData && windowData.unassigned) ||
+      {code:null,name:'Unassigned geography',total:0,located:0,county_only:0,records:[]};
+    if (Object.prototype.hasOwnProperty.call(counties,code)) return counties[code];
+    return {code:code,name:name || code,total:0,located:0,county_only:0,records:[]};
+  }
+  function windowSummary(data,key) {
+    const w = data[key] || {};
+    const buckets = Object.values(w.counties || {});
+    return {days:w.days || Number(key),start:w.start || '',end:w.end || '',
+      total:w.n || 0,located:w.plotted || 0,missing:w.unlocated || 0,
+      assigned:buckets.reduce(function(n,b) { return n + b.total; },0),
+      unassigned:bucketOf(w,'unassigned').total,
+      activeCounties:buckets.filter(function(b) { return b.total > 0; }).length};
+  }
+  const LOOKUP = 'https://webapps2.rrc.texas.gov/EWA/drillingPermitsQueryAction.do';
+  function hasSurface(p) {
+    return p.location_precision !== 'county_only' &&
+      Number.isFinite(p.latitude) && Number.isFinite(p.longitude) &&
+      p.latitude >= 25 && p.latitude <= 37 && p.longitude >= -107 && p.longitude <= -92;
+  }
+  function recordView(p) {
+    return {permit:p.state==='nm' ? 'API ' + (p.api || '—') : 'Permit ' + (p.permit_number || p.api || '—') + ' · Seq ' + (p.seq ?? '—'),
+      operator:p.operator || 'Unknown operator',
+      well:(p.well_name || 'Unnamed well') + (p.well_number ? ' · Well ' + p.well_number : ''),
+      approved:p.approved || '—',lookup:p.state==='nm' ? 'https://wwwapps.emnrd.nm.gov/ocd/ocdpermitting/Data/WellSearch.aspx' : LOOKUP};
+  }
+  function pageRecords(records,options) {
+    const o = options || {};
+    const query = String(o.query || '').trim().toLowerCase();
+    const filtered = records.filter(function(p) {
+      if (o.filter === 'missing' && hasSurface(p)) return false;
+      return !query || [p.operator,p.permit_number,p.api,p.seq,p.well_name,p.well_number,p.approved,p.county,p.location_issue]
+        .map(function(v) { return String(v ?? ''); }).join(' ').toLowerCase().includes(query);
+    });
+    const size = Math.max(25,Math.min(50,Math.floor(Number(o.pageSize)) || 25));
+    const pages = Math.max(1,Math.ceil(filtered.length / size));
+    const page = Math.max(1,Math.min(pages,Math.floor(Number(o.page)) || 1));
+    return {rows:filtered.slice((page-1)*size,page*size),total:filtered.length,page:page,pages:pages,pageSize:size};
+  }
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g,function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function popupHtml(p) {
+    const v = recordView(p);
+    return '<div><b>' + escapeHtml(v.well) + '</b><div class="op">' + escapeHtml(v.operator) + '</div>' +
+      '<div>' + escapeHtml(v.permit) + '</div><div>Approved ' + escapeHtml(v.approved) + '</div>' +
+      '<div>' + escapeHtml(p.land || (p.federal ? 'Horizontal' : 'Vertical / other')) +
+      (p.county ? ' · ' + escapeHtml(p.county) : '') + '</div>' +
+      (hasSurface(p) ? '<div>Reported surface: ' + p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) + '</div>' :
+        '<div>No valid reported surface location</div>') +
+      '<a href="' + v.lookup + '" target="_blank" rel="noopener noreferrer">' + (p.state==='nm' ? 'Official OCD well lookup' : 'Official RRC W-1 lookup') + '</a></div>';
+  }
+  function countyCode(feature) {
+    const p = (feature && feature.properties) || {};
+    const code = p.COUNTY ?? p.COUNTYFP ?? p.county_code;
+    return typeof code === 'string' && /^\d{3}$/.test(code) ? code : null;
+  }
+  function activeCountyFeatures(geo,windowData) {
+    return (geo.features || []).filter(function(f) {
+      const code = countyCode(f);
+      return code !== null && bucketOf(windowData,code).total > 0;
+    });
+  }
+  function countColor(n) {
+    if (n >= 40) return '#450a0a';
+    if (n >= 30) return '#b91c1c';
+    if (n >= 20) return '#ef4444';
+    if (n >= 10) return '#f97316';
+    if (n >= 5) return '#fb923c';
+    if (n >= 2) return '#fde047';
+    return '#38bdf8';
+  }
+  function countyStyle(n,selected) {
+    return {color:selected ? '#ffffff' : '#fdba74',weight:selected ? 3 : 1,
+      opacity:0.9,fillColor:countColor(n),fillOpacity:n > 0 ? 0.55 : 0};
+  }
+  function countyOptions(geo,windowData,selected) {
+    const options = (geo.features || []).filter(function(f) { return countyCode(f) !== null; }).map(function(f) {
+      const code = countyCode(f), b = bucketOf(windowData,code,f.properties.NAME);
+      return {code:code,name:b.name,total:b.total};
+    }).sort(function(a,b) { return String(a.name).localeCompare(String(b.name)); });
+    const unknown = bucketOf(windowData,'unassigned');
+    if (unknown.total || selected === 'unassigned') options.push({code:'unassigned',name:'Unassigned geography',total:unknown.total});
+    return options;
+  }
+  function selectionForWindow(selected) { return selected || ''; }
+  const api = {bucketOf:bucketOf,windowSummary:windowSummary,hasSurface:hasSurface,
+    recordView:recordView,pageRecords:pageRecords,escapeHtml:escapeHtml,popupHtml:popupHtml,
+    countyCode:countyCode,activeCountyFeatures:activeCountyFeatures,countColor:countColor,
+    countyStyle:countyStyle,countyOptions:countyOptions,selectionForWindow:selectionForWindow};
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.CountyHelpers = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script id="county-app">
+"use strict";
+const PermitWireBasin = (() => {
+  const days = [30, 90, 180];
+  const identities = { tx: 'TX RRC drilling permits', nm: 'NM OCD C-101' };
+  const check = (ok, message) => { if (!ok) throw new Error(message); };
+  const count = n => Number.isSafeInteger(n) && n >= 0;
+  const canonicalDate = s => {
+    if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const d = new Date(`${s}T00:00:00Z`);
+    return Number.isFinite(+d) && d.toISOString().slice(0,10) === s;
+  };
+  // Parse only the plain JSON assignment; never import or execute the source HTML.
+  function literal(html, name) {
+    const lines = Array.from(html.matchAll(new RegExp(`^\\s*const ${name} = (.+);[ \\t]*$`, 'gm')));
+    check(lines.length === 1, `Missing or ambiguous ${name}`);
+    return JSON.parse(lines[0][1]);
+  }
+  function parse(html, state, expected) {
+    check(canonicalDate(expected) && html.includes(`<title>${identities[state]} — rolling 30 / 90 / 180 days as of ${expected}</title>`), 'Wrong snapshot identity or date');
+    const data = literal(html, 'DATA');
+    const counties = literal(html, 'COUNTIES');
+    check(counties.type === 'FeatureCollection' && counties.features.length > 0, 'Missing county outlines');
+    for (const d of days) {
+      const w = data[d];
+      const start = new Date(Date.parse(expected) - (d - 1) * 86400000).toISOString().slice(0,10);
+      check(w.days === d && w.start === start && w.end === expected, 'Mismatched window');
+      check([w.n, w.plotted, w.unlocated].every(count) && w.n === w.plotted + w.unlocated && w.points.length === w.plotted, 'Inconsistent snapshot counts');
+      check(w.points.every(p => Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && p.latitude >= 25 && p.latitude <= 38 && p.longitude >= -110 && p.longitude <= -92 && canonicalDate(p.approved) && p.approved >= start && p.approved <= expected), 'Invalid point');
+      if (state === 'tx') {
+        const shapes = new Set(counties.features.map(f => f.properties.COUNTY));
+        const entries = Object.entries(w.counties);
+        check(entries.every(([code,b]) => shapes.has(code) && b.code === code), 'Unknown Texas county');
+        const buckets = entries.map(([,b]) => b).concat(w.unassigned);
+        check(buckets.every(b => [b.total,b.located,b.county_only].every(count) && b.total === b.located+b.county_only), 'Inconsistent county bucket');
+        check(buckets.reduce((n,b) => n+b.total,0) === w.n && buckets.reduce((n,b) => n+b.located,0) === w.plotted, 'County totals do not reconcile');
+      }
+    }
+    return {data, counties};
+  }
+  const polygons = geom => geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+  const cross = (a,b,p) => (b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);
+  const between = (x,a,b) => x >= Math.min(a,b)-1e-10 && x <= Math.max(a,b)+1e-10;
+  const onEdge = (a,b,p) => Math.abs(cross(a,b,p)) < 1e-10 && between(p[0],a[0],b[0]) && between(p[1],a[1],b[1]);
+  function inRing(p, ring) {
+    let inside = false;
+    for (let i=1; i<ring.length; i++) {
+      const a=ring[i-1], b=ring[i];
+      if (onEdge(a,b,p)) return true;
+      if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]) inside = !inside;
+    }
+    return inside;
+  }
+  const inside = (p, ps) => ps.some(([outer,...holes]) => inRing(p,outer) && !holes.some(r => inRing(p,r)));
+  const edges = rings => rings.flatMap(r => r.slice(1).map((p,i) => [r[i],p]));
+  function intersects([a,b],[c,d]) {
+    if (Math.max(a[0],b[0]) < Math.min(c[0],d[0]) || Math.max(c[0],d[0]) < Math.min(a[0],b[0]) || Math.max(a[1],b[1]) < Math.min(c[1],d[1]) || Math.max(c[1],d[1]) < Math.min(a[1],b[1])) return false;
+    return (cross(a,b,c)*cross(a,b,d) < 0 && cross(c,d,a)*cross(c,d,b) < 0) || onEdge(a,b,c) || onEdge(a,b,d) || onEdge(c,d,a) || onEdge(c,d,b);
+  }
+  function prepare(tx,nm,basin) {
+    const extent = basin.features.flatMap(f => polygons(f.geometry));
+    check(extent.length > 0, 'Missing basin boundary');
+    const ed = edges(extent.flat());
+    const touches = f => {
+      const ps = polygons(f.geometry);
+      return ps.some(([ring]) => inside(ring[0],extent)) || extent.some(([ring]) => inside(ring[0],ps)) || edges(ps.flat()).some(e => ed.some(other => intersects(e,other)));
+    };
+    return {extent, tx:tx.counties.features.filter(touches), nm:nm.counties.features.filter(touches)};
+  }
+  function extract(tx,nm,basin,window,geo=prepare(tx,nm,basin)) {
+    const txW = tx.data[window], nmW = nm.data[window];
+    const select = w => w.points.filter(p => inside([p.longitude,p.latitude],geo.extent));
+    return {start:txW.start, tx:{points:select(txW), countyOnly:geo.tx.map(f => ({name:f.properties.NAME,n:txW.counties[f.properties.COUNTY]?.county_only || 0})).filter(c => c.n).sort((a,b) => b.n-a.n || a.name.localeCompare(b.name)), unassignedStatewide:txW.unassigned.county_only}, nm:{points:select(nmW),unlocatedStatewide:nmW.unlocated}};
+  }
+  return {days, canonicalDate, parse, prepare, extract};
+})();
+if (typeof module !== 'undefined') module.exports = PermitWireBasin;
+async function loadPermian(day, root, basin, stateLine) {
+  const P = PermitWireBasin;
+  if (!P.canonicalDate(day)) throw new Error('Invalid cutoff');
+  async function get(state, name) {
+    const res = await fetch(`${root}/${state}/${name}_${day}_heat.html`, {redirect:'error', signal:AbortSignal.timeout(14000)});
+    if (!res.ok) throw new Error(`Missing ${state.toUpperCase()} dated snapshot`);
+    const raw = await res.text();
+    return {...P.parse(raw,state,day), cities:JSON.parse(raw.match(/^const CITIES = (.+);\s*$/m)[1])};
+  }
+  const [tx,nm] = await Promise.all([get('tx','RRC_Approved_Permits'),get('nm','NM_Approved_Permits')]);
+  const g = P.prepare(tx,nm,basin);
+  const name = f => f.properties.NAME;
+  const code = f => f.properties.COUNTY;
+  const nmCodes = new Map(g.nm.map((f,i) => [name(f).toLowerCase(),String(800+i)]));
+  function feature(f,state) {
+    return {...f, properties:{...f.properties, STATE:state, COUNTY:state==='tx'?code(f):nmCodes.get(name(f).toLowerCase()), NAME:`${name(f)}, ${state==='tx'?'Texas':'New Mexico'}`}};
+  }
+  function nmRecord(p) {
+    return {...p, state:'nm', land:p.federal?'Federal / Indian':p.land || 'State / Private'};
+  }
+  const features = [...g.tx.map(f=>feature(f,'tx')), ...g.nm.map(f=>feature(f,'nm'))];
+  const all = {};
+  for (const d of P.days) {
+    const v = P.extract(tx,nm,basin,d,g);
+    const t = tx.data[d], n = nm.data[d];
+    const counties = {};
+    for (const f of features) {
+      const id = code(f);
+      if (f.properties.STATE==='tx') {
+        const b=t.counties[id];
+        if (b) counties[id] = {...b,name:name(f),records:b.records.map(p=>({...p,state:'tx'}))};
+      } else {
+        const records=n.points.filter(p=>nmCodes.get((p.county || '').toLowerCase().trim())===id).map(nmRecord);
+        counties[id]={code:id,name:name(f),total:records.length,located:records.length,county_only:0,records};
+      }
+    }
+    all[d]={days:d,start:t.start,end:day,counties,unassigned:t.unassigned,
+      txPoints:v.tx.points.map(p=>({...p,state:'tx'})), nmPoints:v.nm.points.map(nmRecord),
+      txOnly:v.tx.countyOnly.reduce((sum,c)=>sum+c.n,0), nmUnlocated:n.unlocated};
+  }
+  return {all, counties:{type:'FeatureCollection',features}, cities:[...tx.cities,...nm.cities], basin,stateLine};
+}
+
+
+window.__pwReady = false;
+window.__pwError = null;
+(async function() {
+'use strict';
+function fail(err) {
+  window.__pwReady = false;
+  window.__pwError = String(err && err.message || err);
+  console.error(err);
+  const banner = document.getElementById('banner');
+  if (banner) banner.textContent = 'Matching Permian snapshots could not be verified. No combined activity is shown.';
+  for (const id of ['map','toolbar','legends','county-panel','gap']) document.getElementById(id).hidden=true;
+}
+try {
+if (typeof L === 'undefined') throw new Error('Leaflet failed to load; check the network and reload.');
+const H = window.CountyHelpers;
+if (!H) throw new Error('County helpers failed to load.');
+const input = await loadPermian(new URLSearchParams(location.search).get('asof'),"https://hermes-krios.github.io/permitwire-maps",{"type":"FeatureCollection","crs":{"type":"name","properties":{"name":"EPSG:4326"}},"features":[{"type":"Feature","id":1,"geometry":{"type":"Polygon","coordinates":[[[-100.541515453,33.844377712],[-100.504823507,33.692804558],[-100.517059,33.3976210000001],[-100.56465042,33.0474078680001],[-100.603800548,32.925317189],[-100.643814523,32.758469974],[-100.66994669,32.6217494300001],[-100.687818044,32.528248521],[-100.771603829,32.435874627],[-100.878575911,32.35020454],[-100.936514833,32.3038033440001],[-100.997255772,32.2598512750001],[-101.116340813,32.202679558],[-101.177628997,32.156577433],[-101.23297554,32.120265605],[-101.241487133,32.0892706760001],[-101.224813548,32.050822286],[-101.203671871,32.022753572],[-101.175339169,32.003135038],[-101.118564848,31.9740985810001],[-101.050865437,31.96116756],[-100.997141828,31.946953347],[-100.949350547,31.9257975310001],[-100.905044854,31.9030554020001],[-100.850623068,31.875649861],[-100.774524204,31.8312340800001],[-100.689777354,31.760720832],[-100.616864598,31.6533969120001],[-100.544677,31.4589590000001],[-100.48445,31.2186990000001],[-100.404106,30.9872030000001],[-100.336201,30.798702],[-100.275056,30.659655],[-100.215378,30.511469],[-100.167678,30.381872],[-100.136383,30.284787],[-100.108303,30.2063390000001],[-100.082701,30.1161440000001],[-100.071202,30.0634890000001],[-100.060145,30.0016400000001],[-100.054287,29.953293],[-100.049939,29.9057350000001],[-100.044995,29.8541060000001],[-100.040176,29.7759730000001],[-100.036107,29.72511],[-100.038141,29.664075],[-100.043227,29.6091430000001],[-100.057776024,29.5493025170001],[-100.067391059,29.5249654130001],[-100.080825852,29.4986015960001],[-100.089451894,29.487709887],[-100.102439532,29.4770983720001],[-100.116802228,29.470922284],[-100.142288158,29.464703957],[-100.16340978,29.462934886],[-100.260921,29.463674],[-100.321957,29.4657090000001],[-100.395199,29.473847],[-100.46539,29.48402],[-100.542702,29.4982610000001],[-100.627134,29.5145370000001],[-100.691222,29.5318310000001],[-100.729878,29.544038],[-100.782775,29.5643830000001],[-100.829569,29.585746],[-100.894674,29.622367],[-100.999450999,29.685437],[-101.119648,29.7600600000001],[-101.205955,29.8105600000001],[-101.269025,29.847181],[-101.325992,29.880751],[-101.365665,29.901096],[-101.394148,29.908217],[-101.428735,29.909234],[-101.453149,29.9051650000001],[-101.476546,29.8929580000001],[-101.486719,29.903131],[-101.589462,30.0007880000001],[-101.636256,30.040461],[-101.703395,30.092341],[-101.794949,30.1615150000001],[-101.890054,30.2273660000001],[-101.967883,30.2774820000001],[-102.048246,30.324276],[-102.125558,30.3670010000001],[-102.197783,30.4015880000001],[-102.256784,30.427019],[-102.318783,30.44755],[-102.388029,30.469583],[-102.454128,30.4868950000001],[-102.524949,30.499485],[-102.602065,30.508928],[-102.702787,30.5152230000001],[-102.836559,30.512076],[-102.982076,30.5017090000001],[-103.122989,30.49319],[-103.303975,30.4884690000001],[-103.41817,30.4912840000001],[-103.53284,30.5034460000001],[-103.661409,30.5225580000001],[-103.770867,30.5503570000001],[-103.892487,30.58858],[-104.068493,30.6505690000001],[-104.23476,30.729311],[-104.366804,30.802283],[-104.552709,30.923903],[-104.648267,31.009037],[-104.740351,31.113282],[-104.825485,31.2296900000001],[-104.985328,31.492041],[-105.065249,31.636248],[-105.129534,31.776979],[-105.16602,31.8829620000001],[-105.193819,32.013269],[-105.207718,32.117514],[-105.21988,32.2964690000001],[-105.216405,32.464999],[-105.202506,32.56577],[-105.176444,32.6561160000001],[-105.133009,32.753412],[-105.087836,32.8194340000001],[-105.006177,32.904568],[-104.917568,32.972328],[-104.713508,33.097247],[-104.620468,33.15997],[-104.536898,33.222857],[-104.455413,33.2868020000001],[-104.373754,33.366723],[-104.28862,33.4640190000001],[-104.2074,33.56406],[-104.060633,33.7356050000001],[-103.96533,33.8366270000001],[-103.88337,33.905245],[-103.805221,33.9567090000001],[-103.725166,33.989112],[-103.645112,34.0043600000001],[-103.519311,34.013891],[-103.128568,34.0215150000001],[-102.623461,34.011985],[-102.04783,33.989112],[-101.38017,33.960923],[-100.965186,33.939554],[-100.720746464,33.913316869],[-100.541515453,33.844377712]]]},"properties":{"FID":1,"Name":"Permian","Area_sq_km":165329.8,"Area_sq_mi":63834.2,"Shape_Leng":17.1055468318,"Shape_Area":15.7836054892,"Shape__Area":230750361637.41016,"Shape__Length":2047788.9035531515}}],"source":"https://www.arcgis.com/home/item.html?id=17e8e2f1b2384085b4265d769959a86d"},{"type":"Feature","properties":{"source":"https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0","description":"TIGERweb New Mexico boundary segments in the basin vicinity"},"geometry":{"type":"MultiLineString","coordinates":[[[-103.0647,32.3347],[-103.0646,32.9999],[-103.0437,34.0036]],[[-106.5279,31.7839],[-106.5274,31.79],[-106.5471,31.8073],[-106.5665,31.8134],[-106.5772,31.8104],[-106.5891,31.8227],[-106.6028,31.825],[-106.6053,31.8277],[-106.6017,31.8444],[-106.6148,31.8464],[-106.6359,31.8662],[-106.6292,31.8837],[-106.6453,31.8949],[-106.6455,31.8987],[-106.6337,31.9098],[-106.6129,31.9204],[-106.6239,31.9253],[-106.6287,31.9236],[-106.6297,31.9266],[-106.6225,31.9349],[-106.6237,31.9455],[-106.6143,31.9516],[-106.6144,31.956],[-106.6251,31.9545],[-106.6243,31.9611],[-106.6194,31.9648],[-106.6196,31.9716],[-106.6301,31.9713],[-106.6395,31.9803],[-106.6312,31.9898],[-106.6194,31.9947],[-106.6185,32.0005],[-106.0829,32.0027],[-104.8477,32.0004],[-104.7721,31.9975],[-104.7548,31.9978],[-104.7546,32.0005],[-104.7505,32.0005],[-103.0645,32.0004],[-103.0647,32.3347]]]}});
+let DATA = input.all;
+let COUNTIES = input.counties;
+const CITIES = input.cities;
+let state = "both";
+let framing = "full";
+const FED = '#f59e0b';
+const FEE = '#38bdf8';
+function ptsOf(key) { const w=input.all[key]; return (state==='tx'?w.txPoints:state==='nm'?w.nmPoints:[...w.txPoints,...w.nmPoints]).filter(H.hasSurface); }
+function quantile(arr, q) {
+  const a = arr.slice().sort(function(x, y) { return x - y; });
+  if (!a.length) return 0;
+  const i = (a.length - 1) * q;
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  if (lo === hi) return a[lo];
+  return a[lo] * (hi - i) + a[hi] * (i - lo);
+}
+function clusterBounds(pts) {
+  if (!pts.length) return null;
+  if (pts.length < 8) {
+    return L.latLngBounds(pts.map(function(p) { return [p.latitude, p.longitude]; })).pad(0.2);
+  }
+  const lats = pts.map(function(p) { return p.latitude; });
+  const lons = pts.map(function(p) { return p.longitude; });
+  return L.latLngBounds(
+    [quantile(lats, 0.02), quantile(lons, 0.02)],
+    [quantile(lats, 0.98), quantile(lons, 0.98)]
+  ).pad(0.12);
+}
+function hexSize(z) {
+  if (!Number.isFinite(z)) return 0.045;
+  if (z <= 6) return 0.12;
+  if (z <= 8) return 0.07;
+  return 0.04;
+}
+function axialRound(q, r) {
+  let x = q, z = r, y = -x - z;
+  let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+  const xd = Math.abs(rx - x), yd = Math.abs(ry - y), zd = Math.abs(rz - z);
+  if (xd > yd && xd > zd) rx = -ry - rz;
+  else if (yd > zd) ry = -rx - rz;
+  else rz = -rx - ry;
+  return [rx, rz];
+}
+function lonLatToHex(lon, lat, s) {
+  const rt3 = Math.sqrt(3);
+  const q = (rt3 / 3 * lon - lat / 3) / s;
+  const r = (2 / 3 * lat) / s;
+  return axialRound(q, r);
+}
+function hexCorners(q, r, s) {
+  const rt3 = Math.sqrt(3);
+  const cx = s * (rt3 * q + rt3 / 2 * r);
+  const cy = s * (1.5 * r);
+  const out = [];
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.PI / 180 * (60 * i - 30);
+    out.push([cy + s * Math.sin(ang), cx + s * Math.cos(ang)]);
+  }
+  return out;
+}
+function buildHex(key, s) {
+  const counts = {};
+  ptsOf(key).forEach(function(p) {
+    const qr = lonLatToHex(p.longitude, p.latitude, s);
+    const id = qr[0] + ':' + qr[1];
+    counts[id] = (counts[id] || 0) + 1;
+  });
+  const layers = [];
+  Object.keys(counts).forEach(function(id) {
+    const n = counts[id];
+    const parts = id.split(':');
+    const q = +parts[0], r = +parts[1];
+    layers.push(L.polygon(hexCorners(q, r, s), {
+      color: '#fff7ed', weight: 1, fillColor: H.countColor(n), fillOpacity: 0.55,
+      interactive: true
+    }).bindTooltip(n + ' permit' + (n === 1 ? '' : 's')));
+  });
+  return layers;
+}
+
+const map = L.map('map', { zoomControl: true, maxZoom: 19, minZoom: 4, zoomSnap:.25 });
+const fullBounds=L.geoJSON(input.basin).getBounds();
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'Esri',maxZoom:19,maxNativeZoom:19}).addTo(map);
+const streets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'Esri streets',maxZoom:19,opacity:0.85});
+let activeKey = '30';
+let selectedCounty = '';
+let selectedName = '';
+let currentPage = 1;
+const el = function(id) { return document.getElementById(id); };
+function text(tag,value,className) {
+  const node = document.createElement(tag);
+  node.textContent = String(value ?? '');
+  if (className) node.className = className;
+  return node;
+}
+// Outlines remain visible even with county fill disabled; these are never location markers.
+const outlines=L.geoJSON(COUNTIES,{style:{color:'#fdba74',weight:1,fill:false,opacity:0.85},interactive:false}).addTo(map);
+L.geoJSON(input.basin,{style:{color:'#fff7ed',weight:1.5,dashArray:'3 5',fill:false},interactive:false}).addTo(map);
+L.geoJSON(input.stateLine,{style:{color:'#fff7ed',weight:2,dashArray:'7 5'},interactive:false}).addTo(map);
+const countyLayer = L.geoJSON(COUNTIES,{
+  style:function(f) { return H.countyStyle(H.bucketOf(DATA[activeKey],H.countyCode(f)).total,false); },
+  onEachFeature:function(f,layer) {
+    const code = H.countyCode(f);
+    if (!code) return;
+    layer.on('click',function() { selectCounty(code,f.properties.NAME,true); });
+  }
+}).addTo(map);
+const hexLayer = L.layerGroup().addTo(map);
+countyLayer.remove();
+const wellLayer = L.layerGroup().addTo(map);
+const cityLayer = L.layerGroup().addTo(map);
+function updateCountyLayer() {
+  countyLayer.eachLayer(function(layer) {
+    const code = H.countyCode(layer.feature);
+    const b = H.bucketOf(DATA[activeKey],code,layer.feature.properties.NAME);
+    layer.setStyle(H.countyStyle(b.total,code === selectedCounty));
+    layer.unbindTooltip();
+    layer.bindTooltip(text('span',b.name + ': ' + b.total + ' total · ' + b.located + ' located · ' + b.county_only + ' county-only'));
+  });
+}
+function syncView() {
+  hexLayer.clearLayers();
+  wellLayer.clearLayers();
+  const z = map.getZoom();
+  if (map.hasLayer(hexLayer)) buildHex(activeKey,hexSize(z)).forEach(function(layer) { layer.addTo(hexLayer); });
+  const r = z >= 12 ? 6 : z >= 10 ? 5 : 4;
+  ptsOf(activeKey).forEach(function(p) {
+    L.circleMarker([p.latitude,p.longitude],{radius:r,color:'#1c1917',weight:1.2,
+      fillColor:p.federal ? FED : FEE,fillOpacity:0.95,pane:'markerPane'})
+      .bindPopup(H.popupHtml(p)).addTo(wellLayer);
+  });
+}
+function refreshCities() {
+  cityLayer.clearLayers();
+  const bounds = map.getBounds().pad(0.05);
+  CITIES.forEach(function(c) {
+    if (!Number.isFinite(c.latitude) || !Number.isFinite(c.longitude) || !bounds.contains([c.latitude,c.longitude])) return;
+    L.marker([c.latitude,c.longitude],{
+      icon:L.divIcon({className:'city-label',html:H.escapeHtml(c.name),iconSize:[0,0],iconAnchor:[-8,8]}),
+      interactive:false,keyboard:false,zIndexOffset:-200}).addTo(cityLayer);
+  });
+  for (const [point,label] of [[[31.36,-104.15],'Delaware Basin'],[[31.12,-101.87],'Midland Basin']]) {
+    L.marker(point,{icon:L.divIcon({className:'city-label basin-label',html:label,iconSize:[96,14],iconAnchor:[48,7]}),interactive:false,keyboard:false}).addTo(cityLayer);
+  }
+}
+function fitAll() {
+  framing='full'; fitFrame();
+}
+function fitCluster() {
+  const bounds=clusterBounds(ptsOf(activeKey));
+  if (bounds && bounds.isValid()) map.fitBounds(bounds,{maxZoom:10});
+  else fitAll();
+}
+function fitFrame() {
+  if (framing==='cluster') { fitCluster(); return; }
+  const bounds=framing==='delaware' ? [[30.6,-105.1],[33.55,-102.95]] : framing==='midland' ? [[30.45,-103.2],[33.75,-100.35]] : fullBounds;
+  map.fitBounds(bounds,{padding:[22,22],maxZoom:10,animate:false});
+}
+function setPanel(open,focus) {
+  el('county-panel').hidden = !open;
+  el('panel-toggle').setAttribute('aria-expanded',String(open));
+  el('panel-toggle').textContent = open ? 'Hide details' : 'Open details';
+  document.body.classList.toggle('panel-open',open);
+  if (focus && open) el('county-title').focus({preventScroll:true});
+}
+function renderOptions() {
+  const select = el('county-select');
+  const placeholder = text('option','Choose a county…');
+  placeholder.value = '';
+  select.replaceChildren(placeholder);
+  H.countyOptions(COUNTIES,DATA[activeKey],selectedCounty).forEach(function(o) {
+    const option = text('option',o.name + ' (' + o.total + ')');
+    option.value = o.code;
+    select.appendChild(option);
+  });
+  select.value = selectedCounty;
+  const n = H.bucketOf(DATA[activeKey],'unassigned').total;
+  el('unassigned-control').hidden = !n;
+  el('unassigned-control').textContent = 'Unassigned geography (' + n + ')';
+}
+function renderPanel() {
+  const bucket = H.bucketOf(DATA[activeKey],selectedCounty,selectedName);
+  el('county-title').textContent = selectedCounty ? bucket.name : 'County details';
+  el('county-summary').textContent = selectedCounty ? activeKey + '-day · ' + bucket.total + ' total · ' +
+    bucket.located + ' located · ' + bucket.county_only + (selectedCounty === 'unassigned' ? ' missing surface location' : ' county-only') : 'Choose a county to view its records.';
+  el('geography-note').textContent = selectedCounty === 'unassigned' ?
+    'Unassigned geography: unknown, unsupported or offshore county. Located records remain in the surface layers, never forced into a county polygon.' :
+    'Whole county, including areas outside the basin. ' + (bucket.name.endsWith('New Mexico') ? 'Reported surface records only; NM unlocated records cannot be assigned here.' : 'County-only rows have no precise location and are never pinned.');
+  const page = H.pageRecords(selectedCounty ? bucket.records : [],{
+    page:currentPage,pageSize:25,query:el('record-search').value,filter:el('record-filter').value});
+  currentPage = page.page;
+  el('page-prev').disabled = page.page <= 1;
+  el('page-next').disabled = page.page >= page.pages;
+  el('page-status').textContent = page.total + ' matching · Page ' + page.page + ' / ' + page.pages;
+  el('record-list').start = (page.page-1)*page.pageSize+1;
+  const fragment = document.createDocumentFragment();
+  page.rows.forEach(function(p) {
+    const v = H.recordView(p), row = document.createElement('li');
+    row.appendChild(text('strong',v.operator));
+    row.appendChild(text('div',v.permit));
+    row.appendChild(text('div',v.well));
+    row.appendChild(text('div','Approved ' + v.approved,'record-meta'));
+    row.appendChild(text('div',H.hasSurface(p) ? 'Reported surface: ' + p.latitude.toFixed(5) + ', ' + p.longitude.toFixed(5) :
+      'No valid reported surface location' + (p.location_issue ? ' · ' + p.location_issue : ''),'record-meta'));
+    const link = text('a',p.state==='nm' ? 'Official OCD well lookup' : 'Official RRC W-1 lookup');
+    link.href = v.lookup;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    row.appendChild(link);
+    fragment.appendChild(row);
+  });
+  if (!page.rows.length) fragment.appendChild(text('li',selectedCounty ? 'No matching records in this window.' : 'Select a county above.'));
+  el('record-list').replaceChildren(fragment);
+}
+function selectCounty(code,name,focus) {
+  selectedCounty = code;
+  selectedName = name || (code === 'unassigned' ? 'Unassigned geography' : code);
+  currentPage = 1;
+  el('record-search').value = '';
+  el('record-filter').value = 'all';
+  renderOptions();
+  updateCountyLayer();
+  renderPanel();
+  setPanel(true,focus);
+}
+function updateBanner() {
+  const w=input.all[activeKey];
+  const prefix=text('strong','Permian · TX RRC + NM OCD');
+  const counts=[];
+  if (state!=='nm') counts.push('TX reported surface '+w.txPoints.length.toLocaleString(),w.txOnly.toLocaleString()+' TX county-only');
+  if (state!=='tx') counts.push('NM reported surface '+w.nmPoints.length.toLocaleString(),w.nmUnlocated.toLocaleString()+' NM unlocated statewide');
+  el('banner').replaceChildren(prefix,` — ${activeKey}-day permits · ${w.start} → ${w.end} · ${counts.join(' · ')}`);
+  el('gap').hidden=state==='tx' || w.start>'2026-10-31' || w.end<'2026-09-22';
+}
+function syncLegends() {
+  el('county-legend').hidden = !map.hasLayer(countyLayer);
+  el('surface-legend').hidden = !map.hasLayer(wellLayer);
+  el('hex-legend').hidden = !map.hasLayer(hexLayer);
+}
+function guarded(fn) { return function() { try { return fn.apply(this,arguments); } catch(err) { fail(err); } }; }
+const dummy30 = L.layerGroup().addTo(map), dummy90 = L.layerGroup(), dummy180 = L.layerGroup();
+L.control.layers({'30-day':dummy30,'90-day':dummy90,'180-day':dummy180},
+  {'County totals (TX all · NM located)':countyLayer,'Reported surface dots':wellLayer,'Located-only hex counts':hexLayer,'Street labels':streets},
+  {collapsed:false}).addTo(map);
+const FitCtl = L.Control.extend({options:{position:'topleft'},onAdd:function() {
+  const div = L.DomUtil.create('div','leaflet-bar fit-ctl');
+  for (const [key,label] of [['full','Full Permian'],['delaware','Delaware'],['midland','Midland'],['cluster','Cluster']]) {
+    const button=text('button',label); button.type='button';
+    button.addEventListener('click',guarded(()=>{framing=key;fitFrame();})); div.append(button);
+  }
+  L.DomEvent.disableClickPropagation(div);
+  return div;
+}});
+map.addControl(new FitCtl());
+el('state-select').addEventListener('change',guarded(e=>{
+  state=e.target.value;
+  const features=input.counties.features.filter(f=>state==='both' || f.properties.STATE===state);
+  COUNTIES={...input.counties,features};
+  const codes=new Set(features.map(H.countyCode));
+  DATA=Object.fromEntries(Object.entries(input.all).map(([k,w])=>[k,{...w,
+    counties:Object.fromEntries(Object.entries(w.counties).filter(([code])=>codes.has(code))),
+    unassigned:state==='nm'?null:w.unassigned}]));
+  selectedCounty=''; selectedName=''; currentPage=1;
+  outlines.clearLayers().addData(COUNTIES); countyLayer.clearLayers().addData(COUNTIES);
+  updateBanner();renderOptions();updateCountyLayer();renderPanel();syncView();layout();
+}));
+el('county-select').addEventListener('change',guarded(function(e) {
+  if (!e.target.value) { selectedCounty=''; selectedName=''; renderPanel(); updateCountyLayer(); return; }
+  const o = H.countyOptions(COUNTIES,DATA[activeKey],selectedCounty).find(function(item) { return item.code === e.target.value; });
+  if (o) selectCounty(o.code,o.name,false);
+}));
+el('unassigned-control').addEventListener('click',guarded(function() { selectCounty('unassigned','Unassigned geography',true); }));
+el('panel-toggle').addEventListener('click',function() { setPanel(el('county-panel').hidden,true); });
+el('panel-close').addEventListener('click',function() { setPanel(false); el('panel-toggle').focus(); });
+el('county-panel').addEventListener('keydown',function(e) { if (e.key === 'Escape') { setPanel(false); el('panel-toggle').focus(); } });
+['record-search','record-filter'].forEach(function(id) {
+  el(id).addEventListener(id === 'record-search' ? 'input' : 'change',guarded(function() { currentPage=1; renderPanel(); }));
+});
+el('page-prev').addEventListener('click',guarded(function() { currentPage--; renderPanel(); }));
+el('page-next').addEventListener('click',guarded(function() { currentPage++; renderPanel(); }));
+function layout() {
+  document.documentElement.style.setProperty('--header-height',(el('header').getBoundingClientRect().height+12)+'px');
+  map.invalidateSize({pan:false});
+}
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(guarded(layout)).observe(el('header'));
+window.addEventListener('resize',guarded(layout));
+document.querySelectorAll('.scale').forEach(function(scale) {
+  [[1,'1'],[2,'2–4'],[5,'5–9'],[10,'10–19'],[20,'20–29'],[30,'30–39'],[40,'40+']].forEach(function(entry) {
+    const label = document.createElement('span'), swatch = document.createElement('i');
+    swatch.className = 'sw'; swatch.style.background = H.countColor(entry[0]);
+    label.append(swatch,document.createTextNode(entry[1])); scale.appendChild(label);
+  });
+});
+map.on('zoomend',guarded(syncView));
+map.on('moveend',guarded(refreshCities));
+map.on('overlayadd overlayremove',guarded(function(e) { syncLegends(); if (e.layer === hexLayer) syncView(); }));
+map.on('baselayerchange',guarded(function(e) {
+  activeKey = e.layer === dummy30 ? '30' : e.layer === dummy90 ? '90' : '180';
+  selectedCounty = H.selectionForWindow(selectedCounty,DATA[activeKey]);
+  currentPage = 1;
+  updateBanner(); renderOptions(); updateCountyLayer(); renderPanel(); syncView(); syncLegends();
+  // Retain a selected county's viewport; otherwise preserve baseline cluster framing.
+  if (!selectedCounty) fitFrame();
+}));
+map.setView([31.7,-102.2],7);
+map.whenReady(guarded(function() {
+  updateBanner(); renderOptions(); updateCountyLayer(); renderPanel();
+  if (innerWidth <= 600) el('legends').open=false;
+  layout(); fitAll(); syncView(); refreshCities(); syncLegends();
+  if (!window.__pwError) window.__pwReady = true;
+}));
+} catch(err) { fail(err); }
+})();
+</script>
+</body>
+</html>
